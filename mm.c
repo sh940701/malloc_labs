@@ -18,11 +18,27 @@
 #include "mm.h"
 #include "memlib.h"
 
+
+team_t team = {
+        /* Team name */
+        "ateam",
+        /* First member's full name */
+        "Harry Bovik",
+        /* First member's email address */
+        "bovik@cs.cmu.edu",
+        /* Second member's full name (leave blank if none) */
+        "",
+        /* Second member's email address (leave blank if none) */
+        ""
+};
+
 static char *heap_listp;
 
 #define WSIZE 4 // word size
 #define DSIZE 8 // double word size
 #define CHUNKSIZE (1 << 12) // 페이지 증가 요청 크기. 연산 결과는 4kb 에 해당한다.
+
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
 
 /* single word (4) or double word (8) alignment */
 // word == 4 byte, double word align 정책을 적용함
@@ -67,7 +83,7 @@ static char *heap_listp;
 
 // 1. 현재 payload 주소에서 8 byte(현재 블록의 header, 이전 블록의 footer) 만큼 빼서 이전 블록의 footer 위치 파악
 // 2. 이전 블록의 footer 에서 이전 블록의 크기를 구한 후, 현재 payload 의 위치에서 빼면, 이전 블록의 payload 주소값을 구할 수 있음
-#defind PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *) (bp) - DSIZE)))
+#define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *) (bp) - DSIZE)))
 
 static void *coalesce(void *bp) {
     size_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp)));
@@ -81,14 +97,14 @@ static void *coalesce(void *bp) {
     }
 
         // Case 2
-    else if (prev_alloc && !nest_alloc) {
+    else if (prev_alloc && !next_alloc) {
         size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
         PUT(HDRP(bp), PACK(size, 0));
         PUT(FTRP(bp), PACK(size, 0));
     }
 
         // Case 3
-    else if (!prev_allc && next_alloc) {
+    else if (!prev_alloc && next_alloc) {
         size += GET_SIZE(HDRP(PREV_BLKP(bp)));
         PUT(FTRP(bp), PACK(size, 0));
         PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
@@ -117,15 +133,55 @@ static void *extend_heap(size_t words) {
 
     PUT(HDRP(bp), PACK(size, 0)); // free block header
     PUT(FTRP(bp), PACK(size, 0)); // free block footer
-    PUT(HDRP(NEXT_BLKP(bp), PACK(0, 1))) // new epilogue header -> 에필로그 헤더를 뒤로 밈.
+    PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1)); // new epilogue header -> 에필로그 헤더를 뒤로 밈.
 
     // Coalesce 구현
     return coalesce(bp);
 }
 
-static void *find_fit(size_t asize) {}
+static void *find_fit(size_t asize) {
+    void *bp;
 
-static void place(void *bp, size_t asize) {}
+    for (bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
+        if (!GET_SIZE(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))) {
+            return bp;
+        }
+    }
+
+    return NULL;
+}
+
+static void place(void *bp, size_t asize) {
+    size_t csize = GET_SIZE(HDRP(bp));
+
+    if ((csize - asize) >= 2 * DSIZE) {
+        PUT(HDRP(bp), PACK(asize, 1));
+        PUT(FTRP(bp), PACK(asize, 1));
+        bp = NEXT_BLKP(bp);
+        PUT(HDRP(bp), PACK(csize - asize, 0));
+        PUT(FTRP(bp), PACK(csize - asize, 0));
+    } else {
+        PUT(HDRP(bp), PACK(csize, 1));
+        PUT(FTRP(bp), PACK(csize, 1));
+    }
+
+//    // empty block 의 크기가 정확히 일치하거나 Double word 크기보다 작게 차이가 난다면
+//    if (asize <= GET_SIZE(HDRP(bp)) && GET_SIZE(HDRP(bp)) <= asize + DSIZE) {
+//        PUT(HDRP(bp), PACK(asize, 1)); // header
+//        PUT(FTRP(bp), PACK(asize, 1)); // footer
+//    }
+//
+//        // empty block 의 크기가 asize 에 Double word 크기를 더한것보다 크게 차이가 난다면
+//    else {
+//        size_t before_size = HDRP(bp);
+//
+//        PUT(HDRP(bp), PACK(asize, 1)); // header
+//        PUT(FTRP(bp), PACK(asize, 1)); // footer
+//
+//        PUT(FTRP(bp) + WSIZE, PACK(before_size - asize, 0));
+//        PUT(HDRP(bp) + before_size - WSIZE, PACK(before_size - asize, 0));
+//    }
+}
 
 /*
  * mm_malloc - Allocate a block by incrementing the brk pointer.
@@ -142,7 +198,7 @@ void *mm_malloc(size_t size) {
 
     // header(4) + footer(4) + payload => multiples of DSIZE
     if (size <= DSIZE) {
-        asize = 2 * DSIZE
+        asize = 2 * DSIZE;
     } else {
         asize = DSIZE * ((size + (DSIZE) + (DSIZE - 1)) /
                          DSIZE); // 7을 더한 후 DSIZE 로 나눠서 몫만 챙김 -> payload 가 들어갈 수 있는 DSIZE 의 배수 중 최소값을 구함
@@ -209,7 +265,7 @@ int mm_init(void) {
     heap_listp += (2 * WSIZE);
 
     if (extend_heap(CHUNKSIZE / WSIZE) == NULL) { // 할당이 안 되면(?)
-        return -1
+        return -1;
     }
     return 0;
 }
