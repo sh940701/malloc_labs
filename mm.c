@@ -19,12 +19,16 @@
 #include "memlib.h"
 
 /* single word (4) or double word (8) alignment */
+// word == 4 byte, double word align 정책을 적용함
 #define ALIGNMENT 8
 
 /* rounds up to the nearest multiple of ALIGNMENT */
+// 입력받은 size 보다 큰 8의 배수 중 가장 작은 숫자를 통해, 8 의 배수 align 을 맞춤
 #define ALIGN(size) (((size) + (ALIGNMENT-1)) & ~0x7)
 
-
+// typedef __SIZE_TYPE__ size_t; 라는 정의는 size_t 타입이 특정 플랫폼이나 컴파일러에 따라 정의되는 내장 타입 __SIZE_TYPE__로 설정되어 있다는 것을 의미한다.
+// __SIZE_TYPE__은 일반적으로 메모리 주소의 크기에 맞춰져 있으며, 이는 플랫폼이 32비트인지 64비트인지에 따라 달라지게 된다.
+// 32bit 운영체제 기준으로 __SIZE_TYPE__ 은 4 byte 의 크기를 가지게 된다.
 #define SIZE_T_SIZE (ALIGN(sizeof(size_t)))
 
 /*
