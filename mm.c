@@ -123,6 +123,10 @@ static void *extend_heap(size_t words) {
     return coalesce(bp);
 }
 
+static void *find_fit(size_t asize) {}
+
+static void place(void *bp, size_t asize) {}
+
 /*
  * mm_malloc - Allocate a block by incrementing the brk pointer.
  *     Always allocate a block whose size is a multiple of the alignment.
