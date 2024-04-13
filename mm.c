@@ -31,6 +31,38 @@
 // 32bit 운영체제 기준으로 __SIZE_TYPE__ 은 4 byte 의 크기를 가지게 된다.
 #define SIZE_T_SIZE (ALIGN(sizeof(size_t)))
 
+// Header 에 들어갈 데이터를 생성 (블록 크기 | 할당 여부)
+#define PACK(size, alloc) ((size) | (alloc))
+
+// 해당 주소에서 데이터를 read
+#define GET(p) (*(unsigned int *)(p))
+
+// 해당 주소에 데이터를 write
+#define PUT(p, val) (*(unsigned int *)(p) = (val))
+
+// header 에 대해서 마지막 7bit 에 대한 not - and 연산을 취하여 (하위 3개 비트를 0 으로 치환해서) 블록의 크기를 반환
+#define GET_SIZE(p) (GET(p) & ~0x7)
+
+// header 에 대해서 마지막 1bit 에 대한 and 연산을 취하여 블록의 할당 여부를 반환
+#define GET_ALLOC(p) (GET(p) & 0x1)
+
+// 블록 포인터인 bp 를 받아 -4 byte 를 하여 header 의 주소를 read (이 때 bp 는 블록 내 payload 의 위치를 가리키는 것으로 보임)
+#define HDRP(bp) ((char *)(bp) - sizeof(size_t))
+
+// 블록 포인터인 bp 를 받아 bp 에서 block size 만큼을 더한 후, block size 단위(여기선 8 byte) 만큼 빼줌
+// 이 때 bp 가 block 의 header 부터가 아닌 payload 부터라고 하면, footer 의 크기인 4 byte 가 아니라 footer + header 의 크기인 8 byte 만큼 빼 주는 것이 이해 됨
+#define FTRP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)) - ALIGNMENT)
+
+// 여기서 bp 또한 payload 의 시작 주소를 나타낸다고 볼 수 있다.
+// 1. payload addr - 4 byte 를 하여 header 의 주소를 구함
+// 2. header 에서 block 의 크기를 구함
+// 3. payload addr 에서 block 의 크기만큼 더하여, 다음 블록의 payload 의 주소를 반환
+#define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(((char *)(bp) - sizeof(size_t))))
+
+// 1. 현재 payload 주소에서 8 byte(현재 블록의 header, 이전 블록의 footer) 만큼 빼서 이전 블록의 footer 위치 파악
+// 2. 이전 블록의 footer 에서 이전 블록의 크기를 구한 후, 현재 payload 의 위치에서 빼면, 이전 블록의 payload 주소값을 구할 수 있음
+#defind PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *)(bp) - ALIGNMENT)))
+
 /*
  * mm_init - initialize the malloc package.
  */
