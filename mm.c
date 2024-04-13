@@ -83,7 +83,7 @@ static char *heap_listp;
 
 // 1. 현재 payload 주소에서 8 byte(현재 블록의 header, 이전 블록의 footer) 만큼 빼서 이전 블록의 footer 위치 파악
 // 2. 이전 블록의 footer 에서 이전 블록의 크기를 구한 후, 현재 payload 의 위치에서 빼면, 이전 블록의 payload 주소값을 구할 수 있음
-#define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *) (bp) - DSIZE)))
+#define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
 
 static void *coalesce(void *bp) {
     size_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp)));
@@ -127,9 +127,11 @@ static void *extend_heap(size_t words) {
     size_t size;
 
     size = (words % 2) ? (words + 1) * WSIZE : words * WSIZE;
-    if ((long) (bp = mem_sbrk(size) == (void *) -1)) {
+    bp = mem_sbrk(size);
+    if ((long) bp == -1) {
         return NULL;
     }
+
 
     PUT(HDRP(bp), PACK(size, 0)); // free block header
     PUT(FTRP(bp), PACK(size, 0)); // free block footer
@@ -200,22 +202,28 @@ void *mm_malloc(size_t size) {
     if (size <= DSIZE) {
         asize = 2 * DSIZE;
     } else {
-        asize = DSIZE * ((size + (DSIZE) + (DSIZE - 1)) /
-                         DSIZE); // 7을 더한 후 DSIZE 로 나눠서 몫만 챙김 -> payload 가 들어갈 수 있는 DSIZE 의 배수 중 최소값을 구함
+        // 7을 더한 후 DSIZE 로 나눠서 몫만 챙김 -> payload 가 들어갈 수 있는 DSIZE 의 배수 중 최소값을 구함
+        asize = DSIZE * ((size + (DSIZE) + (DSIZE - 1)) / DSIZE);
     }
 
-    if ((bp = find_fit(asize)) != NULL) {
+    bp = find_fit(asize);
+
+    if (bp != NULL) {
         place(bp, asize);
         return bp;
     }
 
     extendsize = MAX(asize, CHUNKSIZE);
-    if ((bp = extend_heap(extendsize / WSIZE)) == NULL) {
+
+    bp = extend_heap(extendsize / WSIZE);
+
+    if (bp == NULL) {
         return NULL;
     }
 
     place(bp, asize);
     return bp;
+
 }
 
 /*
@@ -254,9 +262,17 @@ void *mm_realloc(void *ptr, size_t size) {
 int mm_init(void) {
     // sbrk 를 호출하여 메모리 할당
     // 이 때 초기값으로 Alignment padding, Prologue header/footer, Epilogue header 를 만들어주기 때문에 4 word 를 할당해준다.
-    if ((heap_listp = mem_sbrk(4 * sizeof(size_t)) == (void *) -1)) {
+
+    heap_listp = mem_sbrk(4 * WSIZE);
+
+    if (heap_listp == (void *) -1) {
         return -1;
     }
+
+//    if ((heap_listp = mem_sbrk(4 * WSIZE)) == (void *) -1) {
+////    if ((heap_listp = mem_sbrk(4 * sizeof(size_t)) == (void *)-1)) {
+//        return -1;
+//    }
 
     PUT(heap_listp, 0); // Alignment padding
     PUT(heap_listp + (1 * WSIZE), PACK(DSIZE, 1)); // Prologue header
