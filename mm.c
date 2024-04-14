@@ -260,14 +260,14 @@ void *mm_realloc(void *ptr, size_t size) {
     void *newptr;
     size_t copySize;
 
-    newptr = mm_malloc(size);
+    newptr = mm_malloc(size); // 새로운 영역을 동적할당 하여 newptr 에 반환
     if (newptr == NULL)
         return NULL;
     copySize = GET_SIZE(HDRP(oldptr));
-    if (size < copySize)
+    if (size < copySize) // realloc 을 하여 동적할당 사이즈가 줄어들었을 경우
         copySize = size;
-    memcpy(newptr, oldptr, copySize);
-    mm_free(oldptr);
+    memcpy(newptr, oldptr, copySize); // 이전 ptr 에 있던 데이터를 새로 할당한 ptr 에 옮겨준다.
+    mm_free(oldptr); // 이전 ptr 은 할당 해제
     return newptr;
 }
 
