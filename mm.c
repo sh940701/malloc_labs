@@ -166,23 +166,6 @@ static void place(void *bp, size_t asize) {
         PUT(HDRP(bp), PACK(csize, 1));
         PUT(FTRP(bp), PACK(csize, 1));
     }
-
-//    // empty block 의 크기가 정확히 일치하거나 Double word 크기보다 작게 차이가 난다면
-//    if (asize <= GET_SIZE(HDRP(bp)) && GET_SIZE(HDRP(bp)) <= asize + DSIZE) {
-//        PUT(HDRP(bp), PACK(asize, 1)); // header
-//        PUT(FTRP(bp), PACK(asize, 1)); // footer
-//    }
-//
-//        // empty block 의 크기가 asize 에 Double word 크기를 더한것보다 크게 차이가 난다면
-//    else {
-//        size_t before_size = HDRP(bp);
-//
-//        PUT(HDRP(bp), PACK(asize, 1)); // header
-//        PUT(FTRP(bp), PACK(asize, 1)); // footer
-//
-//        PUT(FTRP(bp) + WSIZE, PACK(before_size - asize, 0));
-//        PUT(HDRP(bp) + before_size - WSIZE, PACK(before_size - asize, 0));
-//    }
 }
 
 /*
