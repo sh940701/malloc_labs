@@ -249,17 +249,11 @@ void *mm_realloc(void *ptr, size_t size) {
 int mm_init(void) {
     // sbrk 를 호출하여 메모리 할당
     // 이 때 초기값으로 Alignment padding, Prologue header/footer, Epilogue header 를 만들어주기 때문에 4 word 를 할당해준다.
-
     heap_listp = mem_sbrk(4 * WSIZE);
 
     if (heap_listp == (void *) -1) {
         return -1;
     }
-
-//    if ((heap_listp = mem_sbrk(4 * WSIZE)) == (void *) -1) {
-////    if ((heap_listp = mem_sbrk(4 * sizeof(size_t)) == (void *)-1)) {
-//        return -1;
-//    }
 
     PUT(heap_listp, 0); // Alignment padding
     PUT(heap_listp + (1 * WSIZE), PACK(DSIZE, 1)); // Prologue header
