@@ -33,6 +33,7 @@ team_t team = {
 };
 
 static char *heap_listp;
+static char *next_fit_addr;
 
 #define WSIZE 4 // word size
 #define DSIZE 8 // double word size
@@ -119,6 +120,7 @@ static void *coalesce(void *bp) {
         bp = PREV_BLKP(bp);
     }
 
+    next_fit_addr = bp;
     return bp;
 }
 
@@ -153,8 +155,34 @@ static void *first_fit(size_t asize) {
     return NULL;
 }
 
+static void *next_fit(size_t asize) {
+    char *bp;
+
+    for (bp = next_fit_addr; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
+        if (!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))) {
+            next_fit_addr = bp;
+            return bp;
+        }
+    }
+
+    if (next_fit_addr != heap_listp) {
+        bp = heap_listp;
+        while (bp != next_fit_addr) {
+            if (!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))) {
+                next_fit_addr = bp;
+                return bp;
+            }
+            bp = NEXT_BLKP(bp);
+        }
+    }
+
+
+    return NULL;
+}
+
 static void *find_fit(size_t asize) {
-    return first_fit(asize);
+//    return first_fit(asize); // 54
+    return next_fit(asize); // 83
 }
 
 static void place(void *bp, size_t asize) {
@@ -264,18 +292,6 @@ int mm_init(void) {
     if (extend_heap(CHUNKSIZE / WSIZE) == NULL) { // 할당이 안 되면(?)
         return -1;
     }
+    next_fit_addr = heap_listp; // next_fit 구현을 위해 next_fit target 초기화
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
