@@ -141,7 +141,7 @@ static void *extend_heap(size_t words) {
     return coalesce(bp);
 }
 
-static void *find_fit(size_t asize) {
+static void *first_fit(size_t asize) {
     void *bp;
 
     for (bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
@@ -151,6 +151,10 @@ static void *find_fit(size_t asize) {
     }
 
     return NULL;
+}
+
+static void *find_fit(size_t asize) {
+    return first_fit(asize);
 }
 
 static void place(void *bp, size_t asize) {
