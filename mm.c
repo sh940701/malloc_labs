@@ -331,8 +331,6 @@ team_t team = {
         ""
 };
 
-static char *heap_listp;
-
 #define WSIZE 4 // word size
 #define DSIZE 8 // double word size
 #define CHUNKSIZE (1 << 12) // 페이지 증가 요청 크기. 연산 결과는 4kb 에 해당한다.
@@ -380,7 +378,7 @@ static char *heap_listp;
 // 3. payload addr 에서 block 의 크기만큼 더하여, 다음 블록의 payload 의 주소를 반환
 #define NEXT_BLKP(bp) ((void *)(bp) + GET_SIZE(HDRP(bp)))
 
-#define PREV_BLKP(bp) ((void *)(bp) - GET_SIZE(((void *)(bp) - BSIZE)))
+#define PREV_BLKP(bp) ((void *)(bp) - GET_SIZE(((void *)(bp) - DSIZE)))
 
 #define PRED_P(bp)  (*(void **)(bp))
 #define SUCC_P(bp)  (*(void **)((bp) + WSIZE))
@@ -544,11 +542,12 @@ static void *coalesce(void *bp) {
     // Case 1
     // 전, 후 block 이 모두 allocation 되어있으면 연결 불가
     if (prev_alloc && next_alloc) {
+        list_add(bp);
         return bp;
     }
 
         // Case 2
-    else if (prev_alloc && !next_alloc) {
+    if (prev_alloc && !next_alloc) {
         list_remove(NEXT_BLKP(bp));
         size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
         PUT(HDRP(bp), PACK(size, 0));
